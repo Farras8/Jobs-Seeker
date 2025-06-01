@@ -1,23 +1,23 @@
 // src/pages/CVScoringPage.tsx
 import React, { useState, ChangeEvent, FormEvent, useRef, useEffect } from 'react';
-import Navbar from '../components/Navbar'; // Sesuaikan path jika perlu
-import Footer from '../components/Footer';   // Sesuaikan path
-import { UploadCloud, FileText as FileTextIcon, CheckCircle, AlertTriangle, Loader2, Sparkles, Info, ListFilter, FileCheck2, ChevronDown } from 'lucide-react'; // ChevronDown ditambahkan
+import Navbar from '../components/Navbar'; 
+import Footer from '../components/Footer';   
+import { UploadCloud, FileText as FileTextIcon, CheckCircle, AlertTriangle, Loader2, Sparkles, Info, ListFilter, FileCheck2, ChevronDown, Construction } from 'lucide-react';
 import Swal from 'sweetalert2';
-import { auth, db } from '../firebase'; // Import auth dan db
-import { collection, getDocs, query, where, orderBy, Timestamp } from 'firebase/firestore'; // Import fungsi Firestore
-import { Link as RouterLink } from 'react-router-dom'; // Untuk tombol kembali atau navigasi
+import { auth, db } from '../firebase'; 
+import { collection, getDocs, query, where, orderBy, Timestamp } from 'firebase/firestore'; 
+import { Link as RouterLink } from 'react-router-dom'; 
 
 // Interface untuk dokumen pengguna dari Firestore
 interface UserDocument {
   id: string;
-  documentName: string; // Menggunakan documentName sesuai update terakhir
+  documentName: string; 
   fileUrl: string;
-  uploadedAt: Date; // Akan dikonversi dari Firestore Timestamp
-  type: string; // Tipe dokumen, e.g., "CV", "Surat Lamaran"
+  uploadedAt: Date; 
+  type: string; 
 }
 
-// Interface untuk hasil skor (bisa disesuaikan nanti)
+// Interface untuk hasil skor
 interface ScoreResult {
   overallScore: number;
   matchPercentage?: number;
@@ -35,45 +35,69 @@ interface ScoreResult {
 
 // Mock data untuk hasil skor
 const MOCK_SCORE_RESULT: ScoreResult = {
-  overallScore: 85,
-  matchPercentage: 78,
+  overallScore: 75, 
+  matchPercentage: 60, 
   strengths: [
-    "Penggunaan kata kunci yang relevan dengan industri.",
-    "Format CV jelas dan mudah dibaca.",
-    "Pengalaman kerja terdokumentasi dengan baik dan menunjukkan pencapaian.",
+    "Contoh kekuatan: Penggunaan kata kunci yang cukup baik.",
+    "Contoh kekuatan: Format CV standar dan mudah dibaca sekilas.",
+    "Contoh kekuatan: Pengalaman kerja relevan dengan beberapa kata kunci.",
   ],
   areasForImprovement: [
-    "Tambahkan lebih banyak detail kuantitatif pada deskripsi pengalaman kerja.",
-    "Pertimbangkan untuk menyesuaikan ringkasan profil agar lebih menonjolkan keahlian spesifik untuk target pekerjaan.",
-    "Beberapa bagian bisa lebih ringkas untuk meningkatkan keterbacaan oleh ATS.",
+    "Contoh perbaikan: Tambahkan lebih banyak pencapaian terukur (angka/data).",
+    "Contoh perbaikan: Sesuaikan ringkasan profil agar lebih spesifik ke target pekerjaan.",
+    "Contoh perbaikan: Periksa kembali tata bahasa dan ejaan.",
   ],
   keywordAnalysis: {
-    found: ["Manajemen Proyek", "Analisis Data", "Python", "SQL", "Komunikasi Tim"],
-    missing: ["Agile Methodology", "Scrum Master", "Tableau"],
+    found: ["Contoh Skill Ditemukan 1", "Contoh Skill Ditemukan 2"],
+    missing: ["Contoh Skill Disarankan 1", "Contoh Skill Disarankan 2", "Contoh Skill Disarankan 3"],
   },
   atsFriendliness: {
-    score: 7,
+    score: 6, 
     tips: [
-        "Gunakan font standar seperti Arial atau Calibri.",
-        "Hindari penggunaan tabel atau kolom yang kompleks.",
-        "Pastikan tanggal diformat secara konsisten."
+        "Tips ATS: Gunakan font standar (misal: Arial, Calibri, Times New Roman).",
+        "Tips ATS: Hindari penggunaan tabel, kolom, atau gambar yang berlebihan.",
+        "Tips ATS: Simpan dalam format PDF jika memungkinkan.",
     ]
   }
 };
 
 const CVScoringPage: React.FC = () => {
-  const [uploadedCvFile, setUploadedCvFile] = useState<File | null>(null); // Untuk file yang baru diupload di halaman ini
+  const [uploadedCvFile, setUploadedCvFile] = useState<File | null>(null);
   const [jobDescription, setJobDescription] = useState<string>("");
   const [isLoadingScore, setIsLoadingScore] = useState<boolean>(false);
-  const [scoreResult, setScoreResult] = useState<ScoreResult | null>(null);
+  const [scoreResult, setScoreResult] = useState<ScoreResult | null>(null); 
   const [scoreError, setScoreError] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  // State untuk daftar CV pengguna dan CV yang dipilih
   const [userCVs, setUserCVs] = useState<UserDocument[]>([]);
-  const [selectedCvId, setSelectedCvId] = useState<string>(''); // ID dari CV yang dipilih dari daftar
-  const [isLoadingCVs, setIsLoadingCVs] = useState<boolean>(true);
+  const [selectedCvId, setSelectedCvId] = useState<string>('');
+  const [isLoadingCVs, setIsLoadingCVs] = useState<boolean>(true); // Mulai true untuk fetch CV
   const [cvListError, setCvListError] = useState<string | null>(null);
+
+  useEffect(() => {
+    Swal.fire({
+      title: `<div class="flex items-center text-xl font-semibold text-gray-800">
+                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="mr-2.5 text-orange-500 flex-shrink-0"><rect x="2" y="6" width="20" height="12" rx="2"/><path d="M17 12h.01"/><path d="M12 12h.01"/><path d="M7 12h.01"/><path d="M5 12H2.5A1.5 1.5 0 0 1 1 10.5V8.5A1.5 1.5 0 0 1 2.5 7H5Z"/><path d="M19 12h2.5a1.5 1.5 0 0 0 1.5-1.5V8.5A1.5 1.5 0 0 0 21.5 7H19Z"/></svg>
+                Fitur Dalam Pengembangan
+              </div>`,
+      html: `
+        <div class="text-gray-600 text-sm sm:text-base py-2 text-left">
+          <p>Fitur <strong>CV Scoring</strong> ini masih dalam tahap pengembangan.</p>
+          <p class="mt-2">Hasil analisis yang akan Anda lihat setelah mengunggah CV adalah <strong class="text-orange-600">data template</strong> untuk demonstrasi.</p>
+          <p class="mt-1">Kami sedang bekerja keras untuk menyajikan analisis CV yang akurat untuk Anda segera!</p>
+        </div>
+      `,
+      iconHtml: `<svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" class="text-orange-500"><rect x="2" y="6" width="20" height="12" rx="2"/><path d="M17 12h.01"/><path d="M12 12h.01"/><path d="M7 12h.01"/><path d="M5 12H2.5A1.5 1.5 0 0 1 1 10.5V8.5A1.5 1.5 0 0 1 2.5 7H5Z"/><path d="M19 12h2.5a1.5 1.5 0 0 0 1.5-1.5V8.5A1.5 1.5 0 0 0 21.5 7H19Z"/></svg>`,
+      confirmButtonText: 'Saya Mengerti',
+      confirmButtonColor: '#3085d6',
+      customClass: {
+        popup: 'rounded-xl shadow-xl',
+        title: '!pt-5 !px-5 !pb-0',
+        htmlContainer: '!px-5 !pb-2 !pt-2',
+        confirmButton: 'bg-blue-600 hover:bg-blue-700 text-white font-semibold py-2 px-5 rounded-lg text-sm shadow-md hover:shadow-lg transition-colors',
+      }
+    });
+  }, []);
 
 
   useEffect(() => {
@@ -129,7 +153,7 @@ const CVScoringPage: React.FC = () => {
   const handleFileChangeAndUpload = (event: ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     if (file) {
-      if (file.size > 5 * 1024 * 1024) {
+      if (file.size > 5 * 1024 * 1024) { 
         Swal.fire("Error", "Ukuran file CV tidak boleh melebihi 5MB.", "error");
         setUploadedCvFile(null);
         if (fileInputRef.current) fileInputRef.current.value = "";
@@ -141,7 +165,7 @@ const CVScoringPage: React.FC = () => {
         if (fileInputRef.current) fileInputRef.current.value = "";
         return;
       }
-      setUploadedCvFile(file);
+      setUploadedCvFile(file); 
       setSelectedCvId(''); 
       setScoreError(null);
       setScoreResult(null);
@@ -151,18 +175,16 @@ const CVScoringPage: React.FC = () => {
   const handleSubmitForScoring = async (event: FormEvent) => {
     event.preventDefault();
     
-    let cvToScore: {id?: string, name: string, file?: File, url?: string } | null = null;
+    let cvToScoreName: string | null = null;
 
     if (selectedCvId) {
         const foundCv = userCVs.find(cv => cv.id === selectedCvId);
-        if (foundCv) {
-            cvToScore = { id: foundCv.id, name: foundCv.documentName, url: foundCv.fileUrl };
-        }
+        if (foundCv) cvToScoreName = foundCv.documentName;
     } else if (uploadedCvFile) {
-        cvToScore = { name: uploadedCvFile.name, file: uploadedCvFile };
+        cvToScoreName = uploadedCvFile.name;
     }
 
-    if (!cvToScore) {
+    if (!cvToScoreName) {
       Swal.fire("Perhatian", "Silakan pilih CV dari daftar atau unggah file CV baru.", "warning");
       return;
     }
@@ -171,19 +193,12 @@ const CVScoringPage: React.FC = () => {
     setScoreError(null);
     setScoreResult(null);
 
-    console.log("Memulai scoring untuk CV:", cvToScore.name);
-    if (cvToScore.url) console.log("Menggunakan CV dari URL:", cvToScore.url);
-    if (cvToScore.file) console.log("Menggunakan CV yang baru diupload:", cvToScore.file.name);
+    console.log("Memulai scoring untuk CV:", cvToScoreName);
     console.log("Dengan deskripsi pekerjaan:", jobDescription || "Tidak ada");
 
-    await new Promise(resolve => setTimeout(resolve, 2500));
+    await new Promise(resolve => setTimeout(resolve, 1500)); 
 
-    if (Math.random() > 0.15 || cvToScore.name.toLowerCase().includes("sukses")) { // Tambahkan kondisi sukses untuk testing
-        setScoreResult(MOCK_SCORE_RESULT);
-    } else {
-        setScoreError("Terjadi kesalahan simulasi saat melakukan scoring CV. Silakan coba beberapa saat lagi.");
-        // Swal.fire("Oops!", "Gagal melakukan scoring CV (simulasi error).", "error"); // Bisa di-remark jika error ditampilkan inline
-    }
+    setScoreResult(MOCK_SCORE_RESULT); 
     setIsLoadingScore(false);
   };
 
@@ -223,7 +238,7 @@ const CVScoringPage: React.FC = () => {
             Analisis & Peringkat CV
           </h1>
           <p className="mt-4 text-lg sm:text-xl text-sky-100 max-w-3xl mx-auto">
-            Unggah atau pilih CV Anda untuk mendapatkan skor dan analisis mendalam.
+            Unggah atau pilih CV Anda untuk mendapatkan skor dan analisis (saat ini menggunakan template).
           </p>
         </div>
       </div>
@@ -277,7 +292,7 @@ const CVScoringPage: React.FC = () => {
                     <p className="text-sm text-gray-600 mb-3 italic">Anda belum memiliki CV tersimpan yang bertipe "CV".</p>
                 )}
                 <div>
-                    <label htmlFor="cvFileUpload" className={`w-full flex flex-col items-center px-6 py-8 border-2 ${uploadedCvFile ? 'border-green-400 bg-green-50' : 'border-gray-300 hover:border-blue-400'} border-dashed rounded-lg cursor-pointer bg-gray-50 hover:bg-gray-100 transition-colors mt-2`}>
+                    <label htmlFor="cvFileUpload" className={`w-full flex flex-col items-center px-6 py-8 border-2 ${uploadedCvFile ? 'border-green-400 bg-green-50 hover:bg-green-100' : 'border-gray-300 hover:border-blue-400'} border-dashed rounded-lg cursor-pointer bg-gray-50 hover:bg-gray-100 transition-colors mt-2`}>
                         {uploadedCvFile ? (
                             <>
                                 <CheckCircle className="mx-auto h-10 w-10 text-green-500" />
@@ -325,7 +340,7 @@ const CVScoringPage: React.FC = () => {
               />
               <p className="mt-1.5 text-xs text-gray-500 flex items-center">
                 <Info size={14} className="mr-1.5 text-sky-600" />
-                Menambahkan deskripsi pekerjaan akan membantu kami memberikan skor kecocokan yang lebih relevan.
+                Menambahkan deskripsi pekerjaan akan membantu kami memberikan skor kecocokan yang lebih relevan (saat fitur penuh diimplementasikan).
               </p>
             </div>
             <div className="pt-4">
@@ -344,7 +359,6 @@ const CVScoringPage: React.FC = () => {
             </div>
           </form>
 
-          {/* Area Hasil Skor */}
           {scoreError && !isLoadingScore && (
             <div className="mt-10 pt-8 border-t border-gray-200">
                  <div className="bg-red-100 border-l-4 border-red-500 text-red-700 p-6 rounded-md" role="alert">
@@ -363,7 +377,7 @@ const CVScoringPage: React.FC = () => {
             <div className="mt-10 pt-8 border-t border-gray-200">
               <h2 className="text-2xl sm:text-3xl font-semibold text-gray-800 mb-8 text-center">
                 <Sparkles size={28} className="inline mr-2.5 text-yellow-500" />
-                Hasil Analisis CV Anda
+                Hasil Analisis CV Anda (Template)
               </h2>
               
               <div className="flex flex-col items-center mb-10">
@@ -379,7 +393,7 @@ const CVScoringPage: React.FC = () => {
                 <div className="bg-green-50 p-6 rounded-lg border border-green-200 shadow-sm">
                   <h3 className="text-xl font-semibold text-green-700 mb-3 flex items-center">
                     <CheckCircle size={22} className="mr-2"/>
-                    Kekuatan Utama
+                    Kekuatan Utama (Contoh)
                   </h3>
                   <ul className="list-disc list-inside space-y-2 text-sm text-green-800 pl-1">
                     {scoreResult.strengths.map((item, index) => <li key={index}>{item}</li>)}
@@ -389,7 +403,7 @@ const CVScoringPage: React.FC = () => {
                 <div className="bg-yellow-50 p-6 rounded-lg border border-yellow-300 shadow-sm">
                   <h3 className="text-xl font-semibold text-yellow-700 mb-3 flex items-center">
                     <AlertTriangle size={22} className="mr-2"/>
-                    Area Perbaikan
+                    Area Perbaikan (Contoh)
                     </h3>
                   <ul className="list-disc list-inside space-y-2 text-sm text-yellow-800 pl-1">
                     {scoreResult.areasForImprovement.map((item, index) => <li key={index}>{item}</li>)}
@@ -399,23 +413,23 @@ const CVScoringPage: React.FC = () => {
 
               {scoreResult.keywordAnalysis && (
                 <div className="mt-8 bg-sky-50 p-6 rounded-lg border border-sky-200 shadow-sm">
-                  <h3 className="text-xl font-semibold text-sky-700 mb-4">Analisis Kata Kunci</h3>
+                  <h3 className="text-xl font-semibold text-sky-700 mb-4">Analisis Kata Kunci (Contoh)</h3>
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-4 text-sm">
                     <div>
-                      <p className="font-medium text-sky-800 mb-2">Kata Kunci Ditemukan di CV Anda:</p>
+                      <p className="font-medium text-sky-800 mb-2">Kata Kunci Ditemukan:</p>
                       {scoreResult.keywordAnalysis.found.length > 0 ? (
                         <div className="flex flex-wrap gap-2">
                             {scoreResult.keywordAnalysis.found.map(k => <span key={k} className="px-3 py-1 bg-sky-200 text-sky-800 rounded-full text-xs font-medium">{k}</span>)}
                         </div>
-                      ) : <p className="text-xs text-gray-500 italic">Tidak ada kata kunci relevan yang ditemukan.</p>}
+                      ) : <p className="text-xs text-gray-500 italic">Tidak ada.</p>}
                     </div>
                     <div>
-                      <p className="font-medium text-orange-600 mb-2">Kata Kunci Disarankan (Tidak Ditemukan):</p>
+                      <p className="font-medium text-orange-600 mb-2">Kata Kunci Disarankan:</p>
                       {scoreResult.keywordAnalysis.missing.length > 0 ? (
                         <div className="flex flex-wrap gap-2">
                             {scoreResult.keywordAnalysis.missing.map(k => <span key={k} className="px-3 py-1 bg-orange-100 text-orange-700 rounded-full text-xs font-medium">{k}</span>)}
                         </div>
-                      ): <p className="text-xs text-gray-500 italic">Semua kata kunci penting sudah ada atau tidak ada saran tambahan.</p>}
+                      ): <p className="text-xs text-gray-500 italic">Tidak ada saran tambahan.</p>}
                     </div>
                   </div>
                 </div>
@@ -425,7 +439,7 @@ const CVScoringPage: React.FC = () => {
                  <div className="mt-8 bg-indigo-50 p-6 rounded-lg border border-indigo-200 shadow-sm">
                     <h3 className="text-xl font-semibold text-indigo-700 mb-4 flex items-center">
                         <ListFilter size={22} className="mr-2"/>
-                        Kesesuaian ATS (Applicant Tracking System)
+                        Kesesuaian ATS (Contoh)
                     </h3>
                     <div className="flex items-center mb-3">
                         <div className="text-3xl font-bold text-indigo-600 mr-3">{scoreResult.atsFriendliness.score}<span className="text-lg text-indigo-500">/10</span></div>
@@ -433,16 +447,19 @@ const CVScoringPage: React.FC = () => {
                             <div className="bg-gradient-to-r from-indigo-400 to-indigo-600 h-3 rounded-full transition-all duration-500" style={{ width: `${scoreResult.atsFriendliness.score * 10}%` }}></div>
                         </div>
                     </div>
-                    <p className="text-sm text-indigo-700 mb-2">Tips untuk meningkatkan skor ATS:</p>
+                    <p className="text-sm text-indigo-700 mb-2">Tips untuk meningkatkan skor ATS (Contoh):</p>
                     <ul className="list-disc list-inside space-y-1.5 text-xs text-indigo-800 pl-1">
                         {scoreResult.atsFriendliness.tips.map((tip, index) => <li key={index}>{tip}</li>)}
                     </ul>
                  </div>
               )}
-
+              <div className="mt-8 text-center">
+                <p className="text-xs text-gray-500 italic">
+                    <strong>Catatan:</strong> Hasil analisis di atas adalah data template dan tidak mencerminkan skor CV Anda yang sebenarnya. Fitur ini masih dalam pengembangan.
+                </p>
+              </div>
             </div>
           )}
-
         </div>
       </main>
       <Footer />

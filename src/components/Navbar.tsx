@@ -156,7 +156,7 @@ export default function Navbar() {
                       Edit Profil
                     </Link>
                     <Link
-                      to="/saved-jobs" 
+                      to="/bookmarks" 
                       onClick={() => setDropdownOpen(false)}
                       className="flex items-center px-4 py-2.5 text-sm text-gray-700 hover:bg-gray-100 hover:text-gray-900 w-full text-left transition-colors group"
                     >
@@ -252,7 +252,7 @@ export default function Navbar() {
                 Edit Profil
               </Link>
               <Link
-                to="/saved-jobs" 
+                to="/bookmarks" 
                 onClick={() => setMobileMenuOpen(false)}
                 className="flex items-center px-3 py-2 rounded-md text-base font-medium text-sky-100 hover:text-white hover:bg-sky-500 transition-colors group"
               >

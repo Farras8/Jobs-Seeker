@@ -3,18 +3,19 @@ import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import Login from "./components/Login";
 import Register from "./components/Register";
 import ProtectedRoute from "./components/ProtectedRoute";
-import Dashboard from "./components/Dashboard";
+import Dashboard from "./components/Dashboard"; // Asumsi path komponen sudah benar
 import ProfilePage from "./components/ProfilePage";
-import ResumePage from "./components/ResumePage"; // Import ResumePage
+import ResumePage from "./components/ResumePage";
 import Jobs from "./components/Jobs";
 import JobDetailPage from "./components/JobsComponent/JobDetailPage";
-import Bookmarks from "./components/Bookmark"; // Import Bookmarks
+import Bookmarks from "./components/Bookmark";
 import Applications from "./components/Applications";
 import AboutUs from "./components/AboutUs";
 import RecommendJobs from "./components/RecommendJobs";
-import CVScoringPage from "./components/Cv-scoring";
-import CompaniesPage from "./components/CompaniesPage";
+import CVScoringPage from "./components/Cv-scoring"; // Pastikan nama file dan path benar
+import CompaniesPage from "./components/CompaniesPage"; // Path sesuai permintaan Anda
 import CompaniesDetailPage from "./components/CompaniesComp/CompaniesDetailPage";
+import NotFoundPage from "./components/NotFoundPage"; // BARU: Impor NotFoundPage
 
 function App() {
   return (
@@ -25,121 +26,21 @@ function App() {
         <Route path="/register" element={<Register />} />
 
         {/* Protected Routes */}
-        <Route
-          path="/"
-          element={
-            <ProtectedRoute>
-              <Dashboard />
-            </ProtectedRoute>
-          }
-        />
+        <Route path="/" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
+        <Route path="/profile/edit" element={<ProtectedRoute><ProfilePage /></ProtectedRoute>} />
+        <Route path="/resume" element={<ProtectedRoute><ResumePage /></ProtectedRoute>} />
+        <Route path="/jobs" element={<ProtectedRoute><Jobs /></ProtectedRoute>} />
+        <Route path="/jobs/:id" element={<ProtectedRoute><JobDetailPage /></ProtectedRoute>} />
+        <Route path="/bookmarks" element={<ProtectedRoute><Bookmarks /></ProtectedRoute>} />
+        <Route path="/applications" element={<ProtectedRoute><Applications /></ProtectedRoute>} />
+        <Route path="/about" element={<ProtectedRoute><AboutUs /></ProtectedRoute>} />
+        <Route path="/Recommend" element={<ProtectedRoute><RecommendJobs/></ProtectedRoute>} /> {/* Path "Recommend" disesuaikan */}
+        <Route path="/cv-scoring" element={<ProtectedRoute><CVScoringPage/></ProtectedRoute>} />
+        <Route path="/companies" element={<ProtectedRoute><CompaniesPage/></ProtectedRoute>} />
+        <Route path="/companies/:id/detail" element={<ProtectedRoute><CompaniesDetailPage/></ProtectedRoute>} />
 
-        {/* Profile Edit Page */}
-        <Route
-          path="/profile/edit"
-          element={
-            <ProtectedRoute>
-              <ProfilePage />
-            </ProtectedRoute>
-          }
-        />
-
-        {/* Resume Page */}
-        <Route
-          path="/resume"
-          element={
-            <ProtectedRoute>
-              <ResumePage />
-            </ProtectedRoute>
-          }
-        />
-
-        {/* Jobs Page */}
-        <Route
-          path="/jobs"
-          element={
-            <ProtectedRoute>
-              <Jobs /> {/* Komponen Jobs.tsx */}
-            </ProtectedRoute>
-          }
-        />
-
-        {/* Job Detail Page */}
-        <Route
-          path="/jobs/:id" // :id is a dynamic parameter
-          element={
-            <ProtectedRoute>
-              <JobDetailPage />
-            </ProtectedRoute>
-          }
-        />
-
-        {/* Bookmarks Page */}
-        <Route
-          path="/bookmarks"
-          element={
-            <ProtectedRoute>
-              <Bookmarks /> {/* Komponen Bookmarks.tsx */}
-            </ProtectedRoute>
-          }
-        />
-
-        <Route
-          path="/applications"
-          element={
-            <ProtectedRoute>
-              <Applications /> {/* Komponen Bookmarks.tsx */}
-            </ProtectedRoute>
-          }
-        />
-
-        <Route
-          path="/about"
-          element={
-            <ProtectedRoute>
-              <AboutUs /> {/* Komponen Bookmarks.tsx */}
-            </ProtectedRoute>
-          }
-        />
-
-        <Route
-          path="/Recommend"
-          element={
-            <ProtectedRoute>
-              <RecommendJobs/> {/* Komponen Bookmarks.tsx */}
-            </ProtectedRoute>
-          }
-        />
-
-        <Route
-          path="/cv-scoring"
-          element={
-            <ProtectedRoute>
-              <CVScoringPage/> {/* Komponen Bookmarks.tsx */}
-            </ProtectedRoute>
-          }
-        />
-
-        <Route
-          path="/companies"
-          element={
-            <ProtectedRoute>
-              <CompaniesPage/> {/* Komponen Bookmarks.tsx */}
-            </ProtectedRoute>
-          }
-        />
-
-        <Route
-          path="/companies/:id/detail"
-          element={
-            <ProtectedRoute>
-              <CompaniesDetailPage/> {/* Komponen Bookmarks.tsx */}
-            </ProtectedRoute>
-          }
-        />
-
-        {/* Redirect to login if route doesn't exist */}
-        <Route path="*" element={<Navigate to="/login" replace />} />
+        {/* Catch-all route untuk halaman tidak ditemukan */}
+        <Route path="*" element={<NotFoundPage />} /> {/* DIPERBARUI */}
       </Routes>
     </BrowserRouter>
   );
