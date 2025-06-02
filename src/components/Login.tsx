@@ -1,13 +1,8 @@
 // src/components/Login.tsx
 import React, { useState } from "react";
-import { auth, googleProvider, db, serverTimestamp } from "../firebase"; // Ditambahkan db dan serverTimestamp
-// User type dari firebase/auth tidak lagi diimpor secara eksplisit di sini
-// karena tidak digunakan untuk anotasi tipe secara langsung dalam file ini.
-// Tipe untuk `result.user` akan diinferensikan oleh TypeScript.
-// Jika Anda memerlukan tipe User secara eksplisit di tempat lain dan mengalami masalah serupa,
-// pertimbangkan untuk memeriksa konfigurasi Vite Anda (optimizeDeps.include).
+import { auth, googleProvider, db, serverTimestamp } from "../firebase"; 
 import { signInWithEmailAndPassword, signInWithPopup } from "firebase/auth"; 
-import { doc, setDoc, getDoc } from "firebase/firestore"; // Ditambahkan doc, setDoc, getDoc
+import { doc, setDoc, getDoc } from "firebase/firestore"; 
 import { Link, useNavigate } from "react-router-dom";
 import { Mail, Lock, Briefcase, AlertCircle } from 'lucide-react';
 
@@ -48,7 +43,7 @@ function Login() {
     setLoading(true);
     try {
       const result = await signInWithPopup(auth, googleProvider);
-      const user = result.user; // Tipe 'user' di sini akan diinferensikan oleh TypeScript
+      const user = result.user;
 
       const userDocRef = doc(db, "users", user.uid);
       const userPersonalInfoRef = doc(userDocRef, "user_personal", "info");
@@ -56,12 +51,14 @@ function Login() {
       const docSnap = await getDoc(userPersonalInfoRef);
 
       if (!docSnap.exists()) {
+        // Pengguna baru via Google Sign-In, buat dokumen dengan field username
         await setDoc(userPersonalInfoRef, {
+          username: "", // Inisialisasi username sebagai string kosong
           fullName: user.displayName || "", 
           email: user.email || "",         
-          phoneNumber: "",                 
-          city: "",                        
-          address: "",                     
+          phoneNumber: "",                                 
+          city: "",                                              
+          address: "",                                          
           photoUrl: user.photoURL || "",   
           github: "",
           instagram: "",
@@ -71,13 +68,24 @@ function Login() {
           updatedAt: serverTimestamp(),
         });
       } else {
+        // Pengguna sudah ada, update field yang relevan dari Google
+        // dan pastikan field username ada jika sebelumnya tidak ada
         const existingData = docSnap.data();
-        await setDoc(userPersonalInfoRef, {
+        const dataToUpdate: { [key: string]: any } = { // Menggunakan tipe yang lebih umum untuk dataToUpdate
           fullName: user.displayName || existingData.fullName || "", 
-          email: user.email || existingData.email || "",
+          email: user.email || existingData.email || "", // Email dari Google biasanya yang terbaru
           photoUrl: user.photoURL || existingData.photoUrl || "",
           updatedAt: serverTimestamp(),
-        }, { merge: true }); 
+        };
+
+        // Tambahkan field username jika belum ada di dokumen yang sudah ada
+        if (existingData.username === undefined) {
+          dataToUpdate.username = ""; // Inisialisasi sebagai string kosong jika belum ada
+        }
+        // Jika existingData.username sudah ada (termasuk string kosong), 
+        // maka tidak akan diubah oleh logika ini, {merge: true} akan mempertahankannya.
+
+        await setDoc(userPersonalInfoRef, dataToUpdate, { merge: true }); 
       }
 
       navigate("/");
